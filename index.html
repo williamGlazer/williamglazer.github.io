@@ -116,10 +116,10 @@
     const CONFIG = {
       points: 150,
       xAxisWidth: 1000,
-      startY: 100,
-      
+      startY: 90,
+
       lineWidth: 2.5,
-      colors: ['#3b0f70', '#8c2981', '#de4968', '#fc8961'], //  Magma colors
+      colors: ['#3b0f70', '#8c2981', '#de4968', '#fc8961'], // Magma colors
       amplitudes: [8, 9, 10, 11],
       
       // Noise
@@ -150,7 +150,11 @@
       const phase2 = Math.random() * Math.PI * 2;
       const phase3 = Math.random() * Math.PI * 2;
       
-      for (let x = 0; x <= CONFIG.xAxisWidth; x += step) {
+      // Calculate end percentage
+      const endPercentage = .99 - (index / (CONFIG.amplitudes.length - 1)) * 0.2;
+      const datasetMaxX = CONFIG.xAxisWidth * endPercentage;
+
+      for (let x = 0; x <= datasetMaxX; x += step) {
         // Base logarithmic curve
         const baseLog = amplitude * Math.log((x * 0.5) + 1);
         
@@ -169,13 +173,31 @@
         data.push({ x, y });
       }
 
+      // Force the exact final point so the line ends perfectly crisp at the calculated max X
+      if (data[data.length - 1].x < datasetMaxX) {
+        const x = datasetMaxX;
+        const baseLog = amplitude * Math.log((x * 0.5) + 1);
+        const rawNoise = 
+          (Math.sin((x * CONFIG.noiseFrequency) + phase1) * 0.3) +
+          (Math.sin((x * CONFIG.noiseFrequency * 2.1) + phase2) * 0.2) +
+          (Math.sin((x * CONFIG.noiseFrequency * 4.3) + phase3) * 0.1);
+        const noiseEnvelope = Math.min(x / 100, 1);
+        const y = CONFIG.startY - baseLog + (rawNoise * CONFIG.noiseIntensity * noiseEnvelope);
+        data.push({ x, y });
+      }
+
       return {
         data: data,
         borderColor: CONFIG.colors[index],
         borderWidth: CONFIG.lineWidth,
         tension: 0.4,
         fill: false,
-        pointRadius: 0,
+        // Scriptable option to render a dot only on the very last point
+        pointRadius: (ctx) => {
+          return ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 0;
+        },
+        pointBackgroundColor: CONFIG.colors[index],
+        pointBorderColor: CONFIG.colors[index],
         pointHoverRadius: 0
       };
     });
