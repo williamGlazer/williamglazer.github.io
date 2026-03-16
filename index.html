@@ -4,31 +4,60 @@
   <meta charset="utf-8" />
   <title>William Glazer – ML Scientist</title>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
-        rel="stylesheet">
-
-  <!-- Styles -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="style.css">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,200,0,0">
 
-  <!-- Icons -->
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,200,0,0">
-
-  <!-- Script -->
   <script src="copy.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Background Canvas Wrapper */
+    #bg-canvas-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+      
+      /* Gentle global fade-in */
+      opacity: 0; 
+      animation: ambientFade 2s ease-out forwards;
+    }
+
+    @keyframes ambientFade {
+      to { opacity: 1; } 
+    }
+
+    /* Respect users who prefer no animations */
+    @media (prefers-reduced-motion: reduce) {
+      #bg-canvas-wrapper {
+        animation: none;
+        opacity: 1 !important;
+      }
+    }
+
+    #hero {
+      transform: translateY(-10vh); 
+      margin-top: 15vh; 
+    }
+  </style>
 </head>
 
 <body>
-  <section id="hero" class="card">
-    <!-- Headshot -->
-    <img src="artifacts/headshot.webp"
-         alt="William's headshot"
-         class="headshot animated-left">
+  <div id="bg-canvas-wrapper">
+    <canvas id="logarithmicChart"></canvas>
+  </div>
 
-    <!-- Text block -->
+  <section id="hero" class="card">
+    <img src="artifacts/headshot.webp" alt="William's headshot" class="headshot animated-left">
+
     <div class="container animated-right">
       <h1>Hi! I'm William</h1>
       <h2>Software Engineer and Machine Learning Scientist</h2>
@@ -40,13 +69,11 @@
       </p>
 
       <div class="button-container">
-        <!-- Copy‑email button -->
         <button id="copyBtn" onclick="copy()">
           <span id="mail">Mail</span>
           <span class="material-symbols-outlined icon">mail</span>
         </button>
 
-        <!-- External links -->
         <a href="https://github.com/williamGlazer" target="_blank">
           <button>
             <span>GitHub</span>
@@ -68,16 +95,14 @@
           </button>
         </a>
 
-        <a href="https://scholar.google.ca/citations?hl=en&user=PbykyI4AAAAJ"
-           target="_blank">
+        <a href="https://scholar.google.ca/citations?hl=en&user=PbykyI4AAAAJ" target="_blank">
           <button>
             <span>Google Scholar</span>
             <span class="material-symbols-outlined icon">school</span>
           </button>
         </a>
 
-        <a href="https://ivado.ca/en/2022/01/10/ivado-student-portraits-william-glazer-cavanagh/"
-           target="_blank">
+        <a href="https://ivado.ca/en/2022/01/10/ivado-student-portraits-william-glazer-cavanagh/" target="_blank">
           <button>
             <span>IVADO Profile</span>
             <span class="material-symbols-outlined icon">account_circle</span>
@@ -86,5 +111,103 @@
       </div>
     </div>
   </section>
+
+  <script>
+    const CONFIG = {
+      points: 150,
+      xAxisWidth: 1000,
+      startY: 100,
+      
+      lineWidth: 2.5,
+      colors: ['#3b0f70', '#8c2981', '#de4968', '#fc8961'], //  Magma colors
+      amplitudes: [8, 9, 10, 11],
+      
+      // Noise
+      noiseIntensity: 1.5, // tall
+      noiseFrequency: 0.1, // stretch
+      
+      // gradient mask focused on the bottom right
+      maxChartOpacity: 0.5,
+      fadeCenterX: '80%', 
+      fadeCenterY: '70%', 
+      fadeSolidArea: '20%',
+      fadeEdge: '85%'
+    };
+    
+    // CSS Masking
+    const wrapper = document.getElementById('bg-canvas-wrapper');
+    const maskStyle = `radial-gradient(ellipse at ${CONFIG.fadeCenterX} ${CONFIG.fadeCenterY}, rgba(0,0,0,${CONFIG.maxChartOpacity}) ${CONFIG.fadeSolidArea}, rgba(0,0,0,0) ${CONFIG.fadeEdge})`;
+    wrapper.style.webkitMaskImage = maskStyle;
+    wrapper.style.maskImage = maskStyle;
+
+    // --- Math Generation ---
+    const datasets = CONFIG.amplitudes.map((amplitude, index) => {
+      const data = [];
+      const step = CONFIG.xAxisWidth / CONFIG.points;
+      
+      // random phase
+      const phase1 = Math.random() * Math.PI * 2;
+      const phase2 = Math.random() * Math.PI * 2;
+      const phase3 = Math.random() * Math.PI * 2;
+      
+      for (let x = 0; x <= CONFIG.xAxisWidth; x += step) {
+        // Base logarithmic curve
+        const baseLog = amplitude * Math.log((x * 0.5) + 1);
+        
+        // Smooth Harmonic Noise: multiple sine waves
+        const rawNoise = 
+          (Math.sin((x * CONFIG.noiseFrequency) + phase1) * 0.3) +
+          (Math.sin((x * CONFIG.noiseFrequency * 2.1) + phase2) * 0.2) +
+          (Math.sin((x * CONFIG.noiseFrequency * 4.3) + phase3) * 0.1);
+          
+        // Noise Envelope: Fade the noise in
+        const noiseEnvelope = Math.min(x / 100, 1);
+        
+        // Y calculation
+        const y = CONFIG.startY - baseLog + (rawNoise * CONFIG.noiseIntensity * noiseEnvelope);
+        
+        data.push({ x, y });
+      }
+
+      return {
+        data: data,
+        borderColor: CONFIG.colors[index],
+        borderWidth: CONFIG.lineWidth,
+        tension: 0.4,
+        fill: false,
+        pointRadius: 0,
+        pointHoverRadius: 0
+      };
+    });
+
+    // --- Render Chart with Trace Animation ---
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ctx = document.getElementById('logarithmicChart').getContext('2d');
+    
+    new Chart(ctx, {
+      type: 'line',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { type: 'linear', display: false, min: 0, max: CONFIG.xAxisWidth },
+          y: { display: false, min: 0, max: 110 }
+        },
+        // Clean left-to-right trace with staggered delays
+        animation: prefersReducedMotion ? false : {
+          x: {
+            type: 'number',
+            easing: 'easeOutQuart',
+            duration: 1,
+            from: NaN, 
+            delay: (ctx) => ctx.datasetIndex * 1
+          }
+        }
+      }
+    });
+  </script>
 </body>
 </html>
