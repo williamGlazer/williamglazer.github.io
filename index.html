@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>William Glazer – ML Scientist</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,200,0,0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6"></script>
+  
+  <link rel="stylesheet" href="style.css?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6">
+  <script src="copy.js?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6" defer></script>
+
+</head>
+
+<body>
+  <section id="hero" class="card">
+    <img src="artifacts/headshot.webp" alt="William's headshot" class="headshot animated-left">
+  
+    <div class="container animated-right">
+      <h1>Hi! I'm William</h1>
+      <h2>Software Engineer and Machine Learning Scientist</h2>
+      <p>
+        I build rigorously tested tools that domain experts trust and adopt, then I scale them for production
+      </p>
+      <p>
+        Feel free to reach out!
+      </p>
+  
+      <div class="button-container">
+        <button id="copyBtn" onclick="copy()">
+          <span id="mail">Mail</span>
+          <span class="material-symbols-outlined icon">mail</span>
+        </button>
+  
+        <a href="https://github.com/williamGlazer" target="_blank">
+          <button>
+            <span>GitHub</span>
+            <span class="material-symbols-outlined icon">terminal</span>
+          </button>
+        </a>
+  
+        <a href="https://www.linkedin.com/in/williamglazercavanagh/" target="_blank">
+          <button>
+            <span>LinkedIn</span>
+            <span class="material-symbols-outlined icon">groups</span>
+          </button>
+        </a>
+  
+        <a href="artifacts/cv.pdf?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6" target="_blank">
+          <button>
+            <span>Resume</span>
+            <span class="material-symbols-outlined icon">description</span>
+          </button>
+        </a>
+  
+        <a href="https://scholar.google.ca/citations?hl=en&user=PbykyI4AAAAJ" target="_blank">
+          <button>
+            <span>Google Scholar</span>
+            <span class="material-symbols-outlined icon">school</span>
+          </button>
+        </a>
+  
+        <a href="https://ivado.ca/en/2022/01/10/ivado-student-portraits-william-glazer-cavanagh/" target="_blank">
+          <button>
+            <span>IVADO Profile</span>
+            <span class="material-symbols-outlined icon">account_circle</span>
+          </button>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div id="bg-canvas-wrapper">
+    <canvas id="logarithmicChart"></canvas>
+  </div>
+
+  <a href="https://arxiv.org/pdf/2203.15556#page=5" target="_blank" class="bg-reference">
+    Background plot inspired by Chinchilla Scaling Laws (Hoffmann et al., 2022)
+  </a>
+
+  <script>
+    // --- 1. CONFIGURATION & CONSTANTS ---
+    const CONFIG = {
+      points: 200,
+      xAxisWidth: 1000,
+      modelSizes: [7.5e7, 1.25e8, 2.5e8, 5e8, 1e9, 2e9, 4e9, 7e9, 1e10],
+      lineWidth: 2.5,
+      envelopeColor: 'rgba(255, 255, 255, 0.4)',
+      animationDuration: 3500,
+      sharpness: 3,
+      canvas: { logCMin: 13.0, logCMax: 22.5 }
+    };
+    CONFIG.canvas.range = CONFIG.canvas.logCMax - CONFIG.canvas.logCMin;
+  
+    const CHINCHILLA = {
+      E: 1.693,
+      A: 406.4,
+      B: 410.7,
+      alpha: 0.336,
+      beta: 0.283,
+      L_INIT: 10.9
+    };
+  
+    // --- 2. DOM & STYLING ---
+    const wrapper = document.getElementById('bg-canvas-wrapper');
+    wrapper.style.maskImage = wrapper.style.webkitMaskImage = 
+      `radial-gradient(ellipse at 60% 60%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 95%)`;
+  
+    function getMagmaColor(percent) {
+      const colors = [
+        [59, 15, 112], [140, 41, 129], [222, 73, 104], [252, 137, 97], [254, 195, 135]
+      ];
+      const segment = percent * (colors.length - 1);
+      const index = Math.min(Math.floor(segment), colors.length - 2);
+      const t = segment - index;
+      
+      const [r1, g1, b1] = colors[index];
+      const [r2, g2, b2] = colors[index + 1];
+      
+      const r = Math.round(r1 + t * (r2 - r1));
+      const g = Math.round(g1 + t * (g2 - g1));
+      const b = Math.round(b1 + t * (b2 - b1));
+      
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  
+    // --- 3. CORE MATH HELPER FUNCTIONS ---
+    function getComputeFlops(x) {
+      const logC = CONFIG.canvas.logCMin + CONFIG.canvas.range * (x / CONFIG.xAxisWidth);
+      return Math.pow(10, logC);
+    }
+  
+    // Unified Loss Calculation
+    function calculateSmoothedLoss(N, C) {
+      const { E, A, B, alpha, beta, L_INIT } = CHINCHILLA;
+      const L_cap = A / Math.pow(N, alpha);
+      const L_comp = (B * Math.pow(6 * N, beta)) / Math.pow(C, beta);
+      const max_L_comp = Math.max(0.1, L_INIT - (E + L_cap));
+  
+      // Sharper transition using generalized p-norm
+      const smoothed_L_comp = Math.pow(
+        Math.pow(L_comp, -CONFIG.sharpness) + Math.pow(max_L_comp, -CONFIG.sharpness), 
+        -1 / CONFIG.sharpness
+      );
+  
+      return E + L_cap + smoothed_L_comp;
+    }
+  
+    function getOptimalComputeLimit(N) {
+      const { A, B, alpha, beta } = CHINCHILLA;
+      const K = (alpha * A) / (beta * B * Math.pow(6, beta));
+      return Math.pow(N, (alpha + beta) / beta) / Math.pow(K, 1 / beta);
+    }
+  
+    // --- 4. DATASET PREPARATION ---
+    const datasetParams = CONFIG.modelSizes.map((modelSize, index) => {
+      const t = index / (CONFIG.modelSizes.length - 1);
+      const logC_opt = Math.log10(getOptimalComputeLimit(modelSize));
+      const rawEndX = CONFIG.xAxisWidth * ((logC_opt - CONFIG.canvas.logCMin) / CONFIG.canvas.range);
+  
+      return {
+        modelSize,
+        color: getMagmaColor(t),
+        endX: Math.min(rawEndX, CONFIG.xAxisWidth) // Clamp to canvas edge
+      };
+    });
+  
+    // --- 5. CHART.JS SETUP ---
+    const datasets = [
+      { // Optimal Envelope Line
+        data: [], borderColor: CONFIG.envelopeColor, borderWidth: 2, 
+        borderDash: [5, 5], tension: 0.4, fill: false, pointRadius: 0, pointHoverRadius: 0
+      },
+      ...datasetParams.map(params => ({ // Trajectory Lines
+        data: [], borderColor: params.color, borderWidth: CONFIG.lineWidth,
+        tension: 0.4, fill: false, pointBackgroundColor: params.color, pointBorderColor: params.color,
+        pointRadius: (ctx) => ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 0,
+        pointHoverRadius: 0
+      }))
+    ];
+  
+    const chart = new Chart(document.getElementById('logarithmicChart').getContext('2d'), {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { intersect: false },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { type: 'linear', display: false, min: 200, max: CONFIG.xAxisWidth },
+          y: { display: false, min: 0.2, max: 1.00 }
+        },
+        animation: false
+      }
+    });
+  
+    // --- 6. ANIMATION LOGIC ---
+    function drawFrame(progress) {
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const step = CONFIG.xAxisWidth / CONFIG.points;
+      const currentDrawLimit = CONFIG.xAxisWidth * easeProgress;
+  
+      const { A, B, alpha, beta } = CHINCHILLA;
+      const K = (alpha * A) / (beta * B * Math.pow(6, beta));
+      
+      // Update Envelope
+      chart.data.datasets[0].data = Array.from({ length: Math.floor(currentDrawLimit / step) + 1 }, (_, i) => {
+        const x = i * step;
+        const C = getComputeFlops(x);
+        const N_opt = Math.pow(K, 1 / (alpha + beta)) * Math.pow(C, beta / (alpha + beta));
+        return { x, y: Math.log10(calculateSmoothedLoss(N_opt, C)) };
+      });
+  
+      // Update Trajectories
+      datasetParams.forEach((params, index) => {
+      const limitX = Math.min(currentDrawLimit, params.endX);
+      const data = [];
+      
+      // Calculate the Y offset to separate lines
+      const flippedOffset = (CONFIG.modelSizes.length - 1 - index) * 0.01;
+      
+      for (let x = 0; x <= limitX; x += step) {
+        const y = Math.log10(calculateSmoothedLoss(params.modelSize, getComputeFlops(x))) - flippedOffset;
+        data.push({ x, y });
+      }
+
+      // Add exact final point if it falls between steps
+      if (data.length && data[data.length - 1].x < limitX) {
+        const finalY = Math.log10(calculateSmoothedLoss(params.modelSize, getComputeFlops(limitX))) - flippedOffset;
+        data.push({ x: limitX, y: finalY });
+      }
+
+      chart.data.datasets[index + 1].data = data;
+    });
+  
+      chart.update('none');
+    }
+  
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      drawFrame(1);
+    } else {
+      let startTime;
+      const stepLoop = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / CONFIG.animationDuration, 1);
+        drawFrame(progress);
+        if (progress < 1) requestAnimationFrame(stepLoop);
+      };
+      requestAnimationFrame(stepLoop);
+    }
+  </script>
+</body>
+</html>
