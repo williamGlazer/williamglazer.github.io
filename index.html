@@ -8,10 +8,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,200,0,0">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
-  <link rel="stylesheet" href="style.css?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6">
-  <script src="copy.js?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6" defer></script>
+  <link rel="stylesheet" href="style.css?v=38132f0be8a296accade11d455a3b911e0061a6c">
+  
+  <script>
+    let timeoutId;
+
+    function copy() {
+      navigator.clipboard.writeText('willcavanagh@hotmail.com')
+        .then(() => {
+          updateButton();
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(resetButton, 700);
+        })
+        .catch(err => console.error('Failed to copy text:', err));
+    }
+
+    function updateButton() {
+      document.getElementById('mail').textContent = 'Copied!';
+    }
+
+    function resetButton() {
+      document.getElementById('mail').textContent = 'Mail';
+    }
+  </script>
 
 </head>
 
@@ -49,7 +70,7 @@
           </button>
         </a>
   
-        <a href="artifacts/cv.pdf?v=cef4ef7ecf23b23bdf1eb6b6d2e74be6869364e6" target="_blank">
+        <a href="artifacts/cv.pdf?v=38132f0be8a296accade11d455a3b911e0061a6c" target="_blank">
           <button>
             <span>Resume</span>
             <span class="material-symbols-outlined icon">description</span>
