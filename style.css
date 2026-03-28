@@ -1,3 +1,35 @@
+  /* Background Canvas Wrapper */
+  #bg-canvas-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
+    
+    /* Gentle global fade-in */
+    opacity: 0; 
+    animation: ambientFade 2s ease-out forwards;
+  }
+
+  @keyframes ambientFade {
+    to { opacity: 1; } 
+  }
+
+  /* Respect users who prefer no animations */
+  @media (prefers-reduced-motion: reduce) {
+    #bg-canvas-wrapper {
+      animation: none;
+      opacity: 1 !important;
+    }
+  }
+
+  #hero {
+    transform: translateY(-10vh); 
+    margin-top: 15vh; 
+  }
+
 /* --------------------------------------------------------------
    Global variables & fonts
 -------------------------------------------------------------- */
@@ -149,3 +181,4 @@ a { text-decoration: none; color: inherit; }
   opacity: 1;
   color: var(--text-primary);
 }
+

@@ -1,0 +1,45 @@
+name: Cache Bust and Deploy
+
+on:
+  push:
+    branches:
+      - main 
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    # 1. Define your "Constant" here
+    env:
+      EXT: "js|css|pdf"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Cache Busting and Logging
+        run: |
+          echo "🔍 Searching for assets with extensions: [${{ env.EXT }}]"
+          
+          # List lines before update
+          grep -E "(href|src)=\"[^\"]+\.(${{ env.EXT }})\"" index.html || echo "No matching assets found."
+          
+          echo ""
+          echo "🚀 Applying cache busting with commit SHA: ${{ github.sha }}"
+          
+          # 2. Use the variable in the sed command
+          # Note: We use double quotes around the sed command to allow shell variable expansion
+          sed -i -E "s/(href|src)=\"([^\"]+\.(${{ env.EXT }}))\"/\1=\"\2?v=${{ github.sha }}\"/g" index.html
+          
+          echo ""
+          echo "✅ Updated lines:"
+          grep -E "\?v=${{ github.sha }}" index.html || echo "Error: No lines were updated."
+          
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . 
+          branch: gh-pages
