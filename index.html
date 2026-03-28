@@ -11,7 +11,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <link rel="stylesheet" href="style.css">
-  <script src="copy.js" defer></script>
+  
+  <script>
+    let timeoutId;
+
+    function copy() {
+      navigator.clipboard.writeText('willcavanagh@hotmail.com')
+        .then(() => {
+          updateButton();
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(resetButton, 700);
+        })
+        .catch(err => console.error('Failed to copy text:', err));
+    }
+
+    function updateButton() {
+      document.getElementById('mail').textContent = 'Copied!';
+    }
+
+    function resetButton() {
+      document.getElementById('mail').textContent = 'Mail';
+    }
+  </script>
 
 </head>
 
